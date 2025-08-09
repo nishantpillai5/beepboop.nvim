@@ -23,7 +23,6 @@ local validate_sound_directory = function(sound_directory)
 	return sound_directory
 end
 
--- Should eventually test if the program even exists on the system
 local validate_audio_player = function(audio_player)
 	local os = eggutils.get_os()
 
@@ -34,7 +33,7 @@ local validate_audio_player = function(audio_player)
 			if not M.suppress_warnings then
 				vim.print("beepboop.nvim: No audio player configured or the current one is unsupported, defaulting to paplay. Set \"suppress_warnings = true\" in your config if this is intentional.")
 			end
-			return "paplay"
+			audio_player = "paplay"
 		end
 	elseif os == "macos" then
 		local mac_os_audio_players = { "afplay", "mpv", "ffplay" }
@@ -42,12 +41,20 @@ local validate_audio_player = function(audio_player)
 			if not M.suppress_warnings then
 				vim.print("beepboop.nvim: No audio player configured or the current one is unsupported, defaulting to afplay. Set \"suppress_warnings = true\" in your config if this is intentional.")
 			end
-			return "afplay"
+			audio_player = "afplay"
 		end
 	elseif os == "windows" then
 		vim.print("beepboop.nvim: We do not support Windows at this time, try windows subsystem for linux.")
-		return nil
+		audio_player = nil
 	end
+
+	-- test if the program exists on the system
+	if audio_player and vim.fn.executable(audio_player) == 0 then
+		if not M.suppress_warnings then
+			vim.print("beepboop.nvim: Audio player '"..audio_player.."' is not installed on your system. Set \"suppress_warnings = true\" in your config if this is intentional.")
+		end
+	end
+
 	return audio_player
 end
 

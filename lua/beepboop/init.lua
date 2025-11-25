@@ -44,8 +44,8 @@ local validate_audio_player = function(audio_player)
 			audio_player = "afplay"
 		end
 	elseif os == "windows" then
-		vim.print("beepboop.nvim: We do not support Windows at this time, try windows subsystem for linux.")
-		audio_player = nil
+        -- ffplay works for me :)
+		audio_player = "ffplay"
 	end
 
 	-- test if the program exists on the system
@@ -113,10 +113,26 @@ end
 
 -- ##################### INITIALIZATION #####################
 
+M.audio_handles = {}
+
+local function make_callback(handle, handle_list)
+    return function(code, signal)
+		M.process_count = M.process_count - 1
+        for i, h in ipairs(handle_list) do
+            if h == handle then
+                table.remove(handle_list, i)
+                break
+            end
+        end
+    end
+end
+
 local get_audio_player_callback = (function(audio_player, sound_directory)
 	local callback = (function(_, _)
 		M.process_count = M.process_count - 1
 	end)
+
+    local handle
 
 	if audio_player == "paplay" then
 		return (function(audio_files, sound_volume)
@@ -124,12 +140,12 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 			if M.process_count >= M.max_sounds then return end
 
 			M.process_count = M.process_count + 1
-			vim.uv.spawn("paplay", {
+			handle = vim.uv.spawn("paplay", {
 				args = {
 					sound_directory .. audio_files[math.random(#audio_files)],
 					"--volume=" .. ((sound_volume / 100) * (M.volume / 100) * 65536),
 				},
-			}, callback)
+			}, make_callback(handle, M.audio_handles))
 		end)
 	elseif audio_player == "pw-play" then
 		return (function(audio_files, sound_volume)
@@ -137,12 +153,12 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 			if M.process_count >= M.max_sounds then return end
 
 			M.process_count = M.process_count + 1
-			vim.uv.spawn("pw-play", {
+			handle = vim.uv.spawn("pw-play", {
 				args = {
 					sound_directory .. audio_files[math.random(#audio_files)],
 					"--volume=" .. ((sound_volume / 100) * (M.volume / 100)),
 				},
-			}, callback)
+			}, make_callback(handle, M.audio_handles))
 		end)
 	elseif audio_player == "mpv" then
 		return (function(audio_files, sound_volume)
@@ -150,12 +166,12 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 			if M.process_count >= M.max_sounds then return end
 
 			M.process_count = M.process_count + 1
-			vim.uv.spawn("mpv", {
+			handle = vim.uv.spawn("mpv", {
 				args = {
 					sound_directory .. audio_files[math.random(#audio_files)],
 					"--volume=" .. ((sound_volume / 100) * M.volume),
 				},
-			}, callback)
+			}, make_callback(handle, M.audio_handles))
 		end)
 	elseif audio_player == "ffplay" then
 		return (function(audio_files, sound_volume)
@@ -163,7 +179,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 			if M.process_count >= M.max_sounds then return end
 
 			M.process_count = M.process_count + 1
-			vim.uv.spawn("ffplay", {
+			handle = vim.uv.spawn("ffplay", {
 				args = {
 					sound_directory .. audio_files[math.random(#audio_files)],
 					"-volume",
@@ -171,7 +187,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					"-nodisp",
 					"-autoexit"
 				},
-			}, callback)
+			}, make_callback(handle, M.audio_handles))
 		end)
 	elseif audio_player == "afplay" then
 		return (function(audio_files, sound_volume)
@@ -179,15 +195,16 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 			if not M.sound_enabled then return end
 
 			M.process_count = M.process_count + 1
-			vim.uv.spawn("afplay", {
+			handle = vim.uv.spawn("afplay", {
 				args = {
 					sound_directory .. audio_files[math.random(#audio_files)],
 					"-volume",
 					((sound_volume / 100) * (M.volume / 100)),
 				},
-			}, callback)
+			}, make_callback(handle, M.audio_handles))
 		end)
 	end
+    table.insert(M.audio_handles, handle)
 end)
 
 local initialize_user_commands = (function()
@@ -287,6 +304,25 @@ M.play_audio = (function(trigger_name)
 		end
 	end
 end)
+
+M.stop_all_audio = function()
+    for _, handle in ipairs(M.audio_handles) do
+        handle:kill("sigterm")
+        handle:close()
+    end
+    M.audio_handles = {}
+end
+
+M.stop_last_audio = function()
+    local handle = table.remove(M.audio_handles)
+    if handle then
+        handle:kill("sigterm")
+        handle:close()
+        print("Last audio stopped")
+    else
+        print("No audio playing")
+    end
+end
 
 M.setup = (function(opts)
 	vim = vim or nil

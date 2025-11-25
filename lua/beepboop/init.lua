@@ -44,8 +44,8 @@ local validate_audio_player = function(audio_player)
 			audio_player = "afplay"
 		end
 	elseif os == "windows" then
-        -- ffplay works for me :)
-		audio_player = "ffplay"
+		vim.print("beepboop.nvim: We do not support Windows at this time, try windows subsystem for linux.")
+		audio_player = nil
 	end
 
 	-- test if the program exists on the system
@@ -113,14 +113,14 @@ end
 
 -- ##################### INITIALIZATION #####################
 
-M.audio_handles = {}
+M.process_handles = {}
 
 local get_audio_player_callback = (function(audio_player, sound_directory)
     local handle
     local callback = (function(_, _)
-        for i, h in ipairs(M.audio_handles) do
+        for i, h in ipairs(M.process_handles) do
             if h == handle then
-                table.remove(M.audio_handles, i)
+                table.remove(M.process_handles, i)
                 M.process_count = M.process_count - 1
                 break
             end
@@ -139,7 +139,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					"--volume=" .. ((sound_volume / 100) * (M.volume / 100) * 65536),
 				},
 			}, callback)
-            table.insert(M.audio_handles, handle)
+            table.insert(M.process_handles, handle)
             return handle
 		end)
 	elseif audio_player == "pw-play" then
@@ -154,7 +154,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					"--volume=" .. ((sound_volume / 100) * (M.volume / 100)),
 				},
 			}, callback)
-            table.insert(M.audio_handles, handle)
+            table.insert(M.process_handles, handle)
             return handle
 		end)
 	elseif audio_player == "mpv" then
@@ -169,7 +169,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					"--volume=" .. ((sound_volume / 100) * M.volume),
 				},
 			}, callback)
-            table.insert(M.audio_handles, handle)
+            table.insert(M.process_handles, handle)
             return handle
 		end)
 	elseif audio_player == "ffplay" then
@@ -187,7 +187,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					"-autoexit"
 				},
 			}, callback)
-            table.insert(M.audio_handles, handle)
+            table.insert(M.process_handles, handle)
             return handle
 		end)
 	elseif audio_player == "afplay" then
@@ -203,7 +203,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					((sound_volume / 100) * (M.volume / 100)),
 				},
 			}, callback)
-            table.insert(M.audio_handles, handle)
+            table.insert(M.process_handles, handle)
             return handle
 		end)
 	end
@@ -309,18 +309,19 @@ M.play_audio = (function(trigger_name)
 end)
 
 M.stop_all_audio = function()
-    for _, handle in ipairs(M.audio_handles) do
+    for _, handle in ipairs(M.process_handles) do
         handle:kill("sigterm")
         handle:close()
     end
-    M.audio_handles = {}
+    M.process_handles = {}
+	M.process_count = 0
 end
 
 M.stop_audio = function(handle)
     if handle then
-        for i, h in ipairs(M.audio_handles) do
+        for i, h in ipairs(M.process_handles) do
             if h == handle then
-                table.remove(M.audio_handles, i)
+                table.remove(M.process_handles, i)
                 M.process_count = M.process_count - 1
                 break
             end

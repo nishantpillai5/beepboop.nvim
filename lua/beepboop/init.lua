@@ -118,10 +118,10 @@ M.audio_handles = {}
 local get_audio_player_callback = (function(audio_player, sound_directory)
     local handle
     local callback = (function(_, _)
-        M.process_count = M.process_count - 1
         for i, h in ipairs(M.audio_handles) do
             if h == handle then
                 table.remove(M.audio_handles, i)
+                M.process_count = M.process_count - 1
                 break
             end
         end
@@ -321,6 +321,7 @@ M.stop_audio = function(handle)
         for i, h in ipairs(M.audio_handles) do
             if h == handle then
                 table.remove(M.audio_handles, i)
+                M.process_count = M.process_count - 1
                 break
             end
         end

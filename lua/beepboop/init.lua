@@ -140,6 +140,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 				},
 			}, callback)
             table.insert(M.audio_handles, handle)
+            return handle
 		end)
 	elseif audio_player == "pw-play" then
 		return (function(audio_files, sound_volume)
@@ -154,6 +155,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 				},
 			}, callback)
             table.insert(M.audio_handles, handle)
+            return handle
 		end)
 	elseif audio_player == "mpv" then
 		return (function(audio_files, sound_volume)
@@ -168,6 +170,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 				},
 			}, callback)
             table.insert(M.audio_handles, handle)
+            return handle
 		end)
 	elseif audio_player == "ffplay" then
 		return (function(audio_files, sound_volume)
@@ -185,6 +188,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 				},
 			}, callback)
             table.insert(M.audio_handles, handle)
+            return handle
 		end)
 	elseif audio_player == "afplay" then
 		return (function(audio_files, sound_volume)
@@ -200,6 +204,7 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 				},
 			}, callback)
             table.insert(M.audio_handles, handle)
+            return handle
 		end)
 	end
 end)
@@ -291,7 +296,7 @@ end)
 
 M.play_audio = (function(trigger_name)
 	if M.sound_map[trigger_name] then
-		M.audio_player_callback(M.sound_map[trigger_name].audio_files, M.sound_map[trigger_name].volume)
+		return M.audio_player_callback(M.sound_map[trigger_name].audio_files, M.sound_map[trigger_name].volume)
 	else
 		if not M.suppress_warnings then
 			error(
@@ -300,6 +305,7 @@ M.play_audio = (function(trigger_name)
 			"\", which hasn't been defined. Set \"suppress_warnings = true\" in your config if this is intentional.", 1)
 		end
 	end
+    return nil
 end)
 
 M.stop_all_audio = function()
@@ -310,14 +316,16 @@ M.stop_all_audio = function()
     M.audio_handles = {}
 end
 
-M.stop_last_audio = function()
-    local handle = table.remove(M.audio_handles)
+M.stop_audio = function(handle)
     if handle then
+        for i, h in ipairs(M.audio_handles) do
+            if h == handle then
+                table.remove(M.audio_handles, i)
+                break
+            end
+        end
         handle:kill("sigterm")
         handle:close()
-        print("Last audio stopped")
-    else
-        print("No audio playing")
     end
 end
 

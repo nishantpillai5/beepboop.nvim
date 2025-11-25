@@ -115,24 +115,17 @@ end
 
 M.audio_handles = {}
 
-local function make_callback(handle, handle_list)
-    return function(code, signal)
-		M.process_count = M.process_count - 1
-        for i, h in ipairs(handle_list) do
+local get_audio_player_callback = (function(audio_player, sound_directory)
+    local handle
+    local callback = (function(_, _)
+        M.process_count = M.process_count - 1
+        for i, h in ipairs(M.audio_handles) do
             if h == handle then
-                table.remove(handle_list, i)
+                table.remove(M.audio_handles, i)
                 break
             end
         end
-    end
-end
-
-local get_audio_player_callback = (function(audio_player, sound_directory)
-	local callback = (function(_, _)
-		M.process_count = M.process_count - 1
 	end)
-
-    local handle
 
 	if audio_player == "paplay" then
 		return (function(audio_files, sound_volume)
@@ -145,7 +138,8 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					sound_directory .. audio_files[math.random(#audio_files)],
 					"--volume=" .. ((sound_volume / 100) * (M.volume / 100) * 65536),
 				},
-			}, make_callback(handle, M.audio_handles))
+			}, callback)
+            table.insert(M.audio_handles, handle)
 		end)
 	elseif audio_player == "pw-play" then
 		return (function(audio_files, sound_volume)
@@ -158,7 +152,8 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					sound_directory .. audio_files[math.random(#audio_files)],
 					"--volume=" .. ((sound_volume / 100) * (M.volume / 100)),
 				},
-			}, make_callback(handle, M.audio_handles))
+			}, callback)
+            table.insert(M.audio_handles, handle)
 		end)
 	elseif audio_player == "mpv" then
 		return (function(audio_files, sound_volume)
@@ -171,7 +166,8 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					sound_directory .. audio_files[math.random(#audio_files)],
 					"--volume=" .. ((sound_volume / 100) * M.volume),
 				},
-			}, make_callback(handle, M.audio_handles))
+			}, callback)
+            table.insert(M.audio_handles, handle)
 		end)
 	elseif audio_player == "ffplay" then
 		return (function(audio_files, sound_volume)
@@ -187,7 +183,8 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					"-nodisp",
 					"-autoexit"
 				},
-			}, make_callback(handle, M.audio_handles))
+			}, callback)
+            table.insert(M.audio_handles, handle)
 		end)
 	elseif audio_player == "afplay" then
 		return (function(audio_files, sound_volume)
@@ -201,10 +198,10 @@ local get_audio_player_callback = (function(audio_player, sound_directory)
 					"-volume",
 					((sound_volume / 100) * (M.volume / 100)),
 				},
-			}, make_callback(handle, M.audio_handles))
+			}, callback)
+            table.insert(M.audio_handles, handle)
 		end)
 	end
-    table.insert(M.audio_handles, handle)
 end)
 
 local initialize_user_commands = (function()

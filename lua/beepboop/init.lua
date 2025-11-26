@@ -44,8 +44,13 @@ local validate_audio_player = function(audio_player)
 			audio_player = "afplay"
 		end
 	elseif os == "windows" then
-		vim.print("beepboop.nvim: We do not support Windows at this time, try windows subsystem for linux.")
-		audio_player = nil
+		local win_os_audio_players = { "ffplay" }
+		if not eggutils.has_value(win_os_audio_players, audio_player) then
+			if not M.suppress_warnings then
+				vim.print("beepboop.nvim: No audio player configured or the current one is unsupported, defaulting to ffplay. Set \"suppress_warnings = true\" in your config if this is intentional.")
+			end
+			audio_player = "ffplay"
+		end
 	end
 
 	-- test if the program exists on the system
